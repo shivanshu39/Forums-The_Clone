@@ -7,7 +7,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from .models import Room, Topic, Message
-from .forms import RoomForm
+from .forms import RoomForm, UserForm
 
 
 
@@ -88,7 +88,7 @@ def home(request):
                                 Q(description__icontains=q)
                                 )
     
-    topics = Topic.objects.all()
+    topics = Topic.objects.all()[:5]
     
     room_count = rooms.count()
     
@@ -151,12 +151,26 @@ def userProfile(request, pk):
 @login_required(login_url='login')
 def createRoom(request):
     form = RoomForm()
+    topics = Topic.objects.all()
     
     # if its a form submit then request method will be "POST"
     # to check the 'POST' data
     if request.method == 'POST':
+        topic_name = request.POST.get('topic')
         
-        # the auto method to assign the form data. 
+        #get_or_create will get the topic name. if a topic name exits,
+        #then created will be False, else if topic name is newly created,
+        #then created will be True
+        topic, created = Topic.objects.get_or_create(name=topic_name)
+        
+        Room.objects.create(
+            host=request.user,
+            topic=topic,
+            name = request.POST.get('name'),
+            description = request.POST.get('description')
+        )
+        
+        """  # the auto method to assign the form data. 
         # request.POST is a dict of values submitted to form.
         # this will create new entry in the database.
         form = RoomForm(request.POST)
@@ -168,12 +182,13 @@ def createRoom(request):
             # before this data is not stored in the database. 
             room = form.save(commit=False)
             room.host = request.user
-            room.save()
+            room.save() """
             
-            # redirecting after saving data
-            return redirect('home')
+        # redirecting after saving data
+        return redirect('home')
+        
     
-    context = {'form' : form}
+    context = {'form' : form, 'topics':topics}
     return render(request, 'base/room_form.html', context)
 
 
@@ -182,6 +197,7 @@ def createRoom(request):
 # this decorator restrict the user if not login to go to specified url
 @login_required(login_url='login')
 def updateRoom(request, pk):
+    topics = Topic.objects.all()
     
     # pk - primary key
     # using pk we get which room is going to be updated.
@@ -199,16 +215,17 @@ def updateRoom(request, pk):
    
    #now updating the data into the database  
     if request.method == 'POST':
+        topic_name = request.POST.get('topic')
+        topic, created = Topic.objects.get_or_create(name=topic_name)
         
-        # instance will tell which database entry to update rather than creating a new entry in the database.
-        form = RoomForm(request.POST, instance=room)
-        
-        if form.is_valid():
-            
-            form.save()
-            return redirect('home')
+
+        room.topic=topic
+        room.name = request.POST.get('name')
+        room.description = request.POST.get('description')
+        room.save()
+        return redirect('home')
     
-    context = {"form" : form}
+    context = {"form" : form, 'topics':topics, 'room':room}
     return render(request, 'base/room_form.html', context)
 
 
@@ -246,3 +263,42 @@ def deleteMessage(request, pk):
         return redirect('home') 
     context={'obj': message}
     return render(request,'base/delete.html',context)
+
+
+
+@login_required(login_url='login')
+def editUser(request,pk):
+    user = User.objects.get(id=pk)
+    form = UserForm(instance=request.user)
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('user-profile', pk=user.id )
+    
+    context ={'user':user, 'form':form}
+    return render(request, 'base/edit-user.html', context)
+
+
+
+def topicPage(request):
+    q = request.GET.get('q')
+    
+    if q == None:
+        q=''
+        
+    topics = Topic.objects.filter(Q(name__icontains=q))
+    room_count = Room.objects.filter(Q(topic__name__icontains=q)).count()
+    return render(request, 'base/topics.html', {'topics':topics, 'room_count':room_count})
+
+
+
+def activityPage(request):
+    q = request.GET.get('q')
+    
+    if q == None:
+        q=''
+        
+    roomMessages = Message.objects.filter(Q(room__name__icontains=q))
+    
+    return render(request, 'base/activity.html', {'roomMessages':roomMessages})
