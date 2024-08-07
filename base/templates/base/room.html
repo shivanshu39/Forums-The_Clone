@@ -82,9 +82,7 @@
                             class="room__author"
                         >
                             <div class="avatar avatar--small">
-                                <img
-                                    src="https://randomuser.me/api/portraits/men/37.jpg"
-                                />
+                                <img src="{{room.host.avatar.url}}" />
                             </div>
                             <span>@{{room.host.username}}</span>
                         </a>
@@ -104,10 +102,11 @@
                                     >
                                         <div class="avatar avatar--small">
                                             <img
-                                                src="https://randomuser.me/api/portraits/men/37.jpg"
+                                                src="{{message.user.avatar.url}}"
                                             />
                                         </div>
-                                        <span>@{{message.user}}</span>
+
+                                        <span>@{{message.user.username}}</span>
                                     </a>
                                     <span class="thread__date">
                                         {{message.created|timesince}} ago
@@ -164,13 +163,11 @@
                     class="participant"
                 >
                     <div class="avatar avatar--medium">
-                        <img
-                            src="https://randomuser.me/api/portraits/men/37.jpg"
-                        />
+                        <img src="{{participant.avatar.url}}" />
                     </div>
                     <p>
-                        {{participant}}
-                        <span>@{{participant}}</span>
+                        {{participant.name}}
+                        <span>@{{participant.username}}</span>
                     </p>
                 </a>
                 {% endfor %}

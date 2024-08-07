@@ -3,11 +3,9 @@ from django.http import HttpResponse
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from .models import Room, Topic, Message
-from .forms import RoomForm, UserForm
+from .models import Room, Topic, Message, User
+from .forms import RoomForm, UserForm, MyUserCreationForm
 
 
 
@@ -23,24 +21,24 @@ def loginPage(request):
     if request.method == "POST":
         
         # get username and password from the submit form
-        username = request.POST.get('username').lower()
+        email = request.POST.get('email').lower()
         password = request.POST.get('password')
         
         # check if the user exits or not. if not then flash message.
         try:
-            user = User.objects.get(username=username)
+            user = User.objects.get(email=email)
         except:
             messages.error(request, 'User does not exists.')
             
         # authenticate the username and password. correct or not. if not it return None.    
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, email=email, password=password)
         
         # if auth works then login and redirect to home
         if user is not None:
             login(request,user)
             return redirect('home')
         else:
-            messages.error(request, 'username or password incorrect.')
+            messages.error(request, 'email or password incorrect.')
             
     context= {'page' : page}
     return render(request, 'base/login_register.html', context)
@@ -56,10 +54,10 @@ def logoutPage(request):
 
 
 def registerPage(request):
-    form = UserCreationForm()
+    form = MyUserCreationForm()
     
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = MyUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.username = user.username.lower()
@@ -120,12 +118,6 @@ def room(request, pk):
     context= {'room':room, 'roomMessages':roomMessages, 'participants':participants}
     
     return render(request, 'base/room.html', context)
-
-
-
-
-def chat(request):
-    return render(request, 'base/chat.html')
 
 
 
@@ -271,7 +263,7 @@ def editUser(request,pk):
     user = User.objects.get(id=pk)
     form = UserForm(instance=request.user)
     if request.method == 'POST':
-        form = UserForm(request.POST, instance=request.user)
+        form = UserForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             return redirect('user-profile', pk=user.id )
